@@ -17,27 +17,29 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random
 
 
 def decision_tree():
-    dt_model = DecisionTreeClassifier(max_depth=3, min_samples_leaf=5).fit(X_train, y_train)
-    y_pred = dt_model.predict(X_test)
-    y_score = dt_model.predict_proba(X_test)[:, 1]
+    dt_model = DecisionTreeClassifier()
+    #GridSearch for Cross Validation
+    params = {
+        'max_depth': [2, 3, 5, 10],
+        'min_samples_leaf': [5, 10, 20, 50],
+        'criterion': ["gini", "entropy"]
+    }
+    grid_search = GridSearchCV(estimator=dt_model,
+                               param_grid=params,
+                               cv=4, n_jobs=-1, verbose=1, scoring = "accuracy")
+    grid_search.fit(X_train, y_train)
+    score_df = pd.DataFrame(grid_search.cv_results_)
+    #print(score_df)
+    print(grid_search.best_estimator_)
+
+    dt_model_tuned = DecisionTreeClassifier(max_depth=3, min_samples_leaf=5).fit(X_train, y_train)
+    y_pred = dt_model_tuned.predict(X_test)
+    y_score = dt_model_tuned.predict_proba(X_test)[:, 1]
     model_performance(y_test, y_pred, y_score, "Karar agaci")
     fig = plt.figure(figsize=(10, 10))
-    plot_tree(dt_model, class_names =["0", "1"], filled=True, proportion=True, feature_names=X.columns)
+    plot_tree(dt_model_tuned, class_names =["0", "1"], filled=True, proportion=True, feature_names=X.columns)
     fig.savefig("siniflandirma_agaci.png")
-    plot_feature_importance(dt_model.feature_importances_,X.columns,'Karar Agaci')
-
-    # params = {
-    #     'max_depth': [2, 3, 5, 10, 20],
-    #     'min_samples_leaf': [5, 10, 20, 50, 100],
-    #     'criterion': ["gini", "entropy"]
-    # }
-    #
-    # grid_search = GridSearchCV(estimator=dt_model,
-    #                            param_grid=params,
-    #                            cv=4, n_jobs=-1, verbose=1, scoring = "accuracy")
-    # grid_search.fit(X_train, y_train)
-    # score_df = pd.DataFrame(grid_search.cv_results_)
-    # print(grid_search.best_estimator_)
+    plot_feature_importance(dt_model_tuned.feature_importances_,X.columns,'Karar Agaci')
     return y_score
 
 
@@ -93,12 +95,12 @@ def model_performance(y_t, y_p, y_s, model_name):
     plt.show()
 
 
-
 if __name__ == "__main__":
     y_score1 = decision_tree()
     y_score2 = random_forest()
     y_score3 = xg_boost()
 
+    #print roc curves in one graphic
     fpr1, tpr1, thresholds1 = roc_curve(y_test, y_score1)
     fpr2, tpr2, thresholds2 = roc_curve(y_test, y_score2)
     fpr3, tpr3, thresholds3 = roc_curve(y_test, y_score3)
